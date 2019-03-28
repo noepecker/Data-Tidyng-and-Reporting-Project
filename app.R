@@ -6,7 +6,7 @@ library(readr)
 library(shinythemes)
 library(DT)
 library(plotly)
-
+library(ggplot)
 ########################### CLEANING
 
 #Import data
