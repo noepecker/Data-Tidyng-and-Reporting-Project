@@ -6,7 +6,11 @@ library(readr)
 library(shinythemes)
 library(DT)
 library(plotly)
-library(ggplot)
+library(ggplot2)
+library(devtools)
+library(kaggler)
+library(fmsb)
+
 ########################### CLEANING
 
 #Import data
@@ -93,8 +97,6 @@ list_player_team_2017 <- unique(rstats_2017$Player_Team)[!is.na(unique(rstats_20
 #Adapt the dataset to plot
 stats2017=stats %>% filter(Year==2017)
 list_player2017 <- stats2017$Player
-#colnames(stats2017)=c("","","","","","","","","","","","","","")
-
 
 
 ################## ui
@@ -282,13 +284,11 @@ server <- function(input, output, session) {
                     selected = tail(list_category, 1)
   );
   
-  
   # Select category to visualize top10
   updateSelectInput(session, "category2",
                     choices = list_category2,
                     selected = tail(list_category2, 1)
   );
-  
   
   # Select year to visualize boxplot
   updateSelectInput(session, "year",
@@ -405,9 +405,7 @@ server <- function(input, output, session) {
         tail(10)
     }
                                 );
-  
-  output$info =renderText(input$name);
-  
+  #Plotly Boxplot Not used
 
   output$plot <- renderPlotly({ 
       dstats %>% filter(Year==2017) %>%
@@ -431,12 +429,17 @@ server <- function(input, output, session) {
 
   });
   
+  #Plotly Plot
+  
   output$dplot <- renderPlotly({
+    varname2 <- input$category3
+    symname2 <- rlang::sym(varname2)
+    quoname2 <- enquo(symname2)
     key= list_player2017
     p <- ggplot(stats2017, 
-      aes(x = PTS, y = `TS%` , colour = Tm, key = key)) + 
-      geom_point(width=0.3, alpha=0.5)+
-      ylab("Shooting Efficiency")+
+      aes(x = PTS, y = !!quoname2 , colour = Tm, key = key)) + 
+      geom_point(alpha=0.5)+
+      ylab(input$category3)+
       xlab("Total Points")
     ggplotly(p) %>% layout(dragmode = "select")
   })
