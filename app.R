@@ -1,7 +1,4 @@
-require(shiny)
-require(tidyverse)
-require("shinyjs")
-require(fmsb)
+
 library(readr)
 library(shinythemes)
 library(DT)
@@ -10,26 +7,41 @@ library(ggplot2)
 library(devtools)
 library(kaggler)
 library(fmsb)
+library(tidyverse)
+library(shiny)
+library(shinyjs)
 
+########################### API
+#devtools::install_github("bernardo-dauria/kaggler")
+#a<- kgl_datasets_download(owner_dataset='drgilermo/nba-players-stats',fileName='Seasons_Stats.csv')
+library(RCurl)
+url <- getURL("https://raw.githubusercontent.com/noepecker/Data-Tidyng-and-Reporting-Project/master/Seasons_Stats.csv")
+#seasons_stats <- read.csv(text=url)
 ########################### CLEANING
 
 #Import data
-seasons_stats <- read_csv("Seasons_Stats.csv", col_types = cols(
-  X1 = col_skip(), `3P` = col_double(), 
-  `3P%` = col_double(), `3PA` = col_double(), 
-  `3PAr` = col_double(), `AST%` = col_double(), 
-  BLK = col_double(), `BLK%` = col_double(), 
-  BPM = col_double(), DBPM = col_double(), 
-  DRB = col_double(), `DRB%` = col_double(), 
-  GS = col_double(), MP = col_double(), 
-  OBPM = col_double(), ORB = col_double(), 
-  `ORB%` = col_double(), PER = col_double(), 
-  STL = col_double(), `STL%` = col_double(), 
-  TOV = col_double(), `TOV%` = col_double(), 
-  TRB = col_double(), `TRB%` = col_double(), 
-  `USG%` = col_double(), VORP = col_double(), 
-  `WS/48` = col_double(), blank2 = col_double(), 
-  blanl = col_double()))
+
+seasons_stats <- read.csv(text=url)
+seasons_stats[,1]<- NULL
+
+# seasons_stats[,6:52]<- as.numeric(seasons_stats[,6:52])
+
+# seasons_stats = col_types = cols(
+#   X1 = col_skip(), `3P` = col_double(), 
+#   `3P%` = col_double(), `3PA` = col_double(), 
+#   `3PAr` = col_double(), `AST%` = col_double(), 
+#   BLK = col_double(), `BLK%` = col_double(), 
+#   BPM = col_double(), DBPM = col_double(), 
+#   DRB = col_double(), `DRB%` = col_double(), 
+#   GS = col_double(), MP = col_double(), 
+#   OBPM = col_double(), ORB = col_double(), 
+#   `ORB%` = col_double(), PER = col_double(), 
+#   STL = col_double(), `STL%` = col_double(), 
+#   TOV = col_double(), `TOV%` = col_double(), 
+#   TRB = col_double(), `TRB%` = col_double(), 
+#   `USG%` = col_double(), VORP = col_double(), 
+#   `WS/48` = col_double(), blank2 = col_double(), 
+#   blanl = col_double())
 
 #Remove blank columns
 stats=seasons_stats
@@ -54,7 +66,7 @@ stats=rbind(statsC, statsPF, statsSF, statsSG, statsPG)
 stats=stats %>% filter(G>30)
 
 ### Filtering for the Radar Plot
-pstats= stats %>% select(ends_with("%"))
+pstats= stats[,c(10,13:19)]
 pstats=pstats[,1:8]
 rstats=cbind(stats[,c(1:2,5)],pstats)
 
@@ -119,7 +131,7 @@ ui=navbarPage("NBA features",
                            )# mainPanel
                          ),# sidebarLayout
                          sidebarLayout(
-                           sidebarPanel(("Top 10"),
+                           sidebarPanel(("Top NBA"),
                                         selectInput("category2", label = h3("Select Category"), 
                                                     choices = character(0),
                                                     selected = 1),
@@ -243,19 +255,22 @@ ui=navbarPage("NBA features",
                          )# sidebarLayout
                        )# fluidPage
               ), #  tabPanel
-              tabPanel("Best Shooter",
+              tabPanel("Best Performance",
                        fluidPage(theme = shinytheme("flatly"), 
                          titlePanel(""),
                          sidebarLayout(
                            sidebarPanel(
-                             selectInput("name", label = h3("Select Variable"), 
+                             selectInput("category3", label = h3("Select Variable"), 
                                          choices = character(0),
                                          selected = 1)
+                             #textInput("Player", "Player Name")
                              
                            ), # sidebarPanel
-                           mainPanel(("Efficiency vs Total Points"),
+                           mainPanel(h4("Performance in a specific area vs total points in 2017", align="center"),
                            #textOutput(outputId = "info"),
-                           plotlyOutput("dplot")
+                           plotlyOutput("dplot"),
+                           p(style = "margin-top: 50px;", "In case you are wondering about the meaning of stat acronyms in the dataset, have a look at the source page, e.g."),
+                           uiOutput("tab")
                               )# mainPanel
                          )# sidebarLayout
                        )# fluidPage
@@ -280,6 +295,12 @@ server <- function(input, output, session) {
   
   # Select category to visualize boxplot
   updateSelectInput(session, "category",
+                    choices = list_category,
+                    selected = tail(list_category, 1)
+  );
+  
+  # Select category to visualize plotly
+  updateSelectInput(session, "category3",
                     choices = list_category,
                     selected = tail(list_category, 1)
   );
@@ -395,7 +416,7 @@ server <- function(input, output, session) {
       stats %>% arrange_(input$category2) %>%
         filter(Year==input$year2) %>%
         select(Player,Pos, input$category2) %>%
-        slice(length(stats$Player):1)
+        tail(10)
 
     }else{
       stats %>% arrange_(input$category2) %>%
@@ -442,7 +463,12 @@ server <- function(input, output, session) {
       ylab(input$category3)+
       xlab("Total Points")
     ggplotly(p) %>% layout(dragmode = "select")
-  })
+  });
+  
+  url <- a("Kobe Bryant example", href="https://www.basketball-reference.com/players/b/bryanko01.html")
+  output$tab <- renderUI({
+    tagList("URL link:", url)
+    })
   
 }
 
