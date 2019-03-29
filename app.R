@@ -1,31 +1,24 @@
-require(shiny)
-require(tidyverse)
-require("shinyjs")
-require(fmsb)
 library(readr)
 library(shinythemes)
 library(DT)
 library(plotly)
-library(ggplot)
+library(ggplot2)
+library(devtools)
+library(kaggler)
+library(fmsb)
+library(tidyverse)
+library(shiny)
+library(shinyjs)
+
+library(RCurl)
+url <- getURL("https://raw.githubusercontent.com/noepecker/Data-Tidyng-and-Reporting-Project/master/Seasons_Stats.csv")
+#seasons_stats <- read.csv(text=url)
 ########################### CLEANING
 
 #Import data
-seasons_stats <- read_csv("Seasons_Stats.csv", col_types = cols(
-  X1 = col_skip(), `3P` = col_double(), 
-  `3P%` = col_double(), `3PA` = col_double(), 
-  `3PAr` = col_double(), `AST%` = col_double(), 
-  BLK = col_double(), `BLK%` = col_double(), 
-  BPM = col_double(), DBPM = col_double(), 
-  DRB = col_double(), `DRB%` = col_double(), 
-  GS = col_double(), MP = col_double(), 
-  OBPM = col_double(), ORB = col_double(), 
-  `ORB%` = col_double(), PER = col_double(), 
-  STL = col_double(), `STL%` = col_double(), 
-  TOV = col_double(), `TOV%` = col_double(), 
-  TRB = col_double(), `TRB%` = col_double(), 
-  `USG%` = col_double(), VORP = col_double(), 
-  `WS/48` = col_double(), blank2 = col_double(), 
-  blanl = col_double()))
+
+seasons_stats <- read.csv(text=url)
+seasons_stats[,1]<- NULL
 
 #Remove blank columns
 stats=seasons_stats
@@ -50,7 +43,7 @@ stats=rbind(statsC, statsPF, statsSF, statsSG, statsPG)
 stats=stats %>% filter(G>30)
 
 ### Filtering for the Radar Plot
-pstats= stats %>% select(ends_with("%"))
+pstats= stats[,c(10,13:19)]
 pstats=pstats[,1:8]
 rstats=cbind(stats[,c(1:2,5)],pstats)
 
@@ -93,8 +86,6 @@ list_player_team_2017 <- unique(rstats_2017$Player_Team)[!is.na(unique(rstats_20
 #Adapt the dataset to plot
 stats2017=stats %>% filter(Year==2017)
 list_player2017 <- stats2017$Player
-#colnames(stats2017)=c("","","","","","","","","","","","","","")
-
 
 
 ################## ui
@@ -102,168 +93,171 @@ list_player2017 <- stats2017$Player
 ui=navbarPage("NBA features",
               tabPanel("Position Comparision",
                        fluidPage(theme = shinytheme("flatly"),
-                         sidebarLayout(
-                           sidebarPanel(("Control Panel"),
-                            selectInput("category", label = h3("Select Category"), 
-                                       choices = character(0),
-                                       selected = 1),
-                            selectInput("year", label = h3("Select Year"), 
-                                        choices = character(0),
-                                        selected = 1)
-                           
-                         ), # sidebarPanel
-                           mainPanel(h3("Position player Comparision", align = "center"),
-                                     plotOutput(outputId = "boxplot")
-                           )# mainPanel
-                         ),# sidebarLayout
-                         sidebarLayout(
-                           sidebarPanel(("Top 10"),
-                                        selectInput("category2", label = h3("Select Category"), 
-                                                    choices = character(0),
-                                                    selected = 1),
-                                        sliderInput("year2", label = h4("Select Year"), 
-                                                    min=2000, max=2017, value=2017),
-                                        fluidRow(
-                                          h3(style = "margin-left: 20px; margin-bottom: 0px;", h4("Position")),
-                                          column(3,
-                                                 div( checkboxInput("all_players", label = "All players", value = TRUE))
-                                                 ),
-                                          column(10, 
-                                                 selectInput("position", label= "" ,
-                                                             choices = character(0),
-                                                             selected = 1)
-                                          )
-                                        )
-                           ), #sidebarpanel 2
-                           mainPanel(h3("NBA Top 10",align = "center"),
-                                     fluidRow(
-                                       column(12,align="center",
-                                              tableOutput(outputId = "topten"
-                                              )
-                                     ) #column
-                                     )#FluidRow    
-                           )# mainPanel
-                         )# sidebarLayout 2
+                                 sidebarLayout(
+                                   sidebarPanel(("Control Panel"),
+                                                selectInput("category", label = h3("Select Category"), 
+                                                            choices = character(0),
+                                                            selected = 1),
+                                                selectInput("year", label = h3("Select Year"), 
+                                                            choices = character(0),
+                                                            selected = 1)
+                                                
+                                   ), # sidebarPanel
+                                   mainPanel(h3("Position player Comparision", align = "center"),
+                                             plotOutput(outputId = "boxplot")
+                                   )# mainPanel
+                                 ),# sidebarLayout
+                                 sidebarLayout(
+                                   sidebarPanel(("Top NBA"),
+                                                selectInput("category2", label = h3("Select Category"), 
+                                                            choices = character(0),
+                                                            selected = 1),
+                                                sliderInput("year2", label = h4("Select Year"), 
+                                                            min=2000, max=2017, value=2017),
+                                                fluidRow(
+                                                  h3(style = "margin-left: 20px; margin-bottom: 0px;", h4("Position")),
+                                                  column(3,
+                                                         div( checkboxInput("all_players", label = "All players", value = TRUE))
+                                                  ),
+                                                  column(10, 
+                                                         selectInput("position", label= "" ,
+                                                                     choices = character(0),
+                                                                     selected = 1)
+                                                  )
+                                                )
+                                   ), #sidebarpanel 2
+                                   mainPanel(h3("NBA Top 10",align = "center"),
+                                             fluidRow(
+                                               column(12,align="center",
+                                                      tableOutput(outputId = "topten"
+                                                      )
+                                               ) #column
+                                             )#FluidRow    
+                                   )# mainPanel
+                                 )# sidebarLayout 2
                        )# fluidPage
               ), #  tabPanel
               tabPanel("1 vs 1",
                        fluidPage(theme = shinytheme("flatly"), 
-                         sidebarLayout(
-                           sidebarPanel(("Control Panel"),
-                                        selectInput("player_team", label = h4("Select Player - Team"), 
-                                                    choices = character(0),
-                                                    selected = 1),
-                                        selectInput("player_team2", label = h4("Select Player - Team"), 
-                                                    choices = character(0),
-                                                    selected = 1)
-
-                           ), # sidebarPanel
-
-                           mainPanel(h3("1 vs 1 in 2017"),
-                                     h5("Attributes that measure the influence in their teams when they are in the floor"),
-                                     #Radar plot
-                                     plotOutput(outputId = "radarplot"),
-                                     
-                                     #Glossary to explain the graph
-                                     
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("TS%:"))
-                                              ),
-                                       column(11,
-                                              p("Shooting efficiency that takes into account 2-point field goals
-                                                3-point field goals and free throws.", align="left")
-                                              )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("ORB%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of available offensive rebounds a player grabbed while 
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("DRB%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of available defensive rebounds a player grabbed while 
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("TRB%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of available rebounds a player grabbed while
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("AST%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of teammate field goals a player assisted while
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("STL%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of opponent possesions that end with a steal by the player while
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("BLK%:"))
-                                       ),
-                                       column(11,
-                                              p("Percentage of opponent 2-point field goal attempts blocked by the player while 
-                                                he was on the floor.", align="left")
-                                       )
-                                     ),#FluidRow
-                                     fluidRow(
-                                       column(1,
-                                              h5(strong("TOV%:"))
-                                       ),
-                                       column(11,
-                                              p("Turnovers commited per 100 plays", align="left")
-                                       )
-                                     )#FluidRow
-                           )# mainPanel
-                         )# sidebarLayout
-                       )# fluidPage
+                                 sidebarLayout(
+                                   sidebarPanel(("Control Panel"),
+                                                selectInput("player_team", label = h4("Select Player - Team"), 
+                                                            choices = character(0),
+                                                            selected = 1),
+                                                selectInput("player_team2", label = h4("Select Player - Team"), 
+                                                            choices = character(0),
+                                                            selected = 1)
+                                                
+                                   ), # sidebarPanel
+                                   
+                                   mainPanel(h3("1 vs 1 in 2017"),
+                                             h5("Attributes that measure the influence in their teams when they are in the floor"),
+                                             #Radar plot
+                                             plotOutput(outputId = "radarplot"),
+                                             
+                                             #Glossary to explain the graph
+                                             
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("TS%:"))
+                                               ),
+                                               column(11,
+                                                      p("Shooting efficiency that takes into account 2-point field goals
+                                                        3-point field goals and free throws.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("ORB%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of available offensive rebounds a player grabbed while 
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("DRB%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of available defensive rebounds a player grabbed while 
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("TRB%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of available rebounds a player grabbed while
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("AST%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of teammate field goals a player assisted while
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("STL%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of opponent possesions that end with a steal by the player while
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("BLK%:"))
+                                               ),
+                                               column(11,
+                                                      p("Percentage of opponent 2-point field goal attempts blocked by the player while 
+                                                        he was on the floor.", align="left")
+                                                      )
+                                               ),#FluidRow
+                                             fluidRow(
+                                               column(1,
+                                                      h5(strong("TOV%:"))
+                                               ),
+                                               column(11,
+                                                      p("Turnovers commited per 100 plays", align="left")
+                                               )
+                                             )#FluidRow
+                                             )# mainPanel
+                                             )# sidebarLayout
+              )# fluidPage
               ), #  tabPanel
-              tabPanel("Best Shooter",
+              tabPanel("Best Performance",
                        fluidPage(theme = shinytheme("flatly"), 
-                         titlePanel(""),
-                         sidebarLayout(
-                           sidebarPanel(
-                             selectInput("name", label = h3("Select Variable"), 
-                                         choices = character(0),
-                                         selected = 1)
-                             
-                           ), # sidebarPanel
-                           mainPanel(("Efficiency vs Total Points"),
-                           #textOutput(outputId = "info"),
-                           plotlyOutput("dplot")
-                              )# mainPanel
-                         )# sidebarLayout
+                                 titlePanel(""),
+                                 sidebarLayout(
+                                   sidebarPanel(
+                                     selectInput("category3", label = h3("Select Variable"), 
+                                                 choices = character(0),
+                                                 selected = 1)
+                                     #textInput("Player", "Player Name")
+                                     
+                                   ), # sidebarPanel
+                                   mainPanel(h4("Performance in a specific area vs total points in 2017", align="center"),
+                                             #textOutput(outputId = "info"),
+                                             plotlyOutput("dplot"),
+                                             p(style = "margin-top: 50px;", "In case you are wondering about the meaning of stat acronyms in the dataset, have a look at the source page, e.g."),
+                                             uiOutput("tab")
+                                   )# mainPanel
+                                 )# sidebarLayout
                        )# fluidPage
               )#  tabPanel
-)
+              )
 
 ################ server
 
 server <- function(input, output, session) {
-
+  
   # Select variable for description
   updateSelectInput(session, "name",
                     choices = list_variables,
@@ -282,13 +276,17 @@ server <- function(input, output, session) {
                     selected = tail(list_category, 1)
   );
   
+  # Select category to visualize plotly
+  updateSelectInput(session, "category3",
+                    choices = list_category,
+                    selected = tail(list_category, 1)
+  );
   
   # Select category to visualize top10
   updateSelectInput(session, "category2",
                     choices = list_category2,
                     selected = tail(list_category2, 1)
   );
-  
   
   # Select year to visualize boxplot
   updateSelectInput(session, "year",
@@ -337,14 +335,14 @@ server <- function(input, output, session) {
     varname <- input$category
     symname <- rlang::sym(varname)
     quoname <- enquo(symname)
-
-      ggplot(stats %>% filter(Year==input$year),
-        aes(x=Pos, y=!!quoname, colour = Pos)) +
-        geom_violin(trim = FALSE, fill="black", alpha=0.1,size = 0.8)+
-        geom_jitter(width = 0.15)+
-        stat_boxplot(geom ='errorbar', width = 0.1)+
-        geom_boxplot(width = 0.4, alpha=0.4)+
-        ylab(input$category)
+    
+    ggplot(stats %>% filter(Year==input$year),
+           aes(x=Pos, y=!!quoname, colour = Pos)) +
+      geom_violin(trim = FALSE, fill="black", alpha=0.1,size = 0.8)+
+      geom_jitter(width = 0.15)+
+      stat_boxplot(geom ='errorbar', width = 0.1)+
+      geom_boxplot(width = 0.4, alpha=0.4)+
+      ylab(input$category)
   });
   
   #Radar plot
@@ -388,15 +386,15 @@ server <- function(input, output, session) {
   
   #To see the overall top or distinguish by position
   observe(if(input$all_players) disable("position") else enable("position") )
-
+  
   output$topten = renderTable(
-
+    
     if(input$all_players){
       stats %>% arrange_(input$category2) %>%
         filter(Year==input$year2) %>%
         select(Player,Pos, input$category2) %>%
-        slice(length(stats$Player):1)
-
+        tail(10)
+      
     }else{
       stats %>% arrange_(input$category2) %>%
         filter(Year==input$year2) %>%
@@ -404,41 +402,49 @@ server <- function(input, output, session) {
         select(Player,Pos, input$category2) %>%
         tail(10)
     }
-                                );
+  );
+  #Plotly Boxplot Not used
   
-  output$info =renderText(input$name);
-  
-
   output$plot <- renderPlotly({ 
-      dstats %>% filter(Year==2017) %>%
-        plot_ly(
-          x = ~Pos,
-          y = ~PF,
-          split = ~Pos,
-          type = 'violin',
-          points = "all", jitter = 0.4, pointpos = 0, 
-          opacity= 0.75,
-          #ids=,
-          #customdata=,
-          #hoverinfo=~PF,
-          fillcolor=~Pos,
-          box = list(visible = T),
-          meanline = list(visible = T)) %>% 
-        layout(
-          xaxis = list(title = "Position"),
-          yaxis = list(title = "PF",zeroline = F)
-        )
-
+    dstats %>% filter(Year==2017) %>%
+      plot_ly(
+        x = ~Pos,
+        y = ~PF,
+        split = ~Pos,
+        type = 'violin',
+        points = "all", jitter = 0.4, pointpos = 0, 
+        opacity= 0.75,
+        #ids=,
+        #customdata=,
+        #hoverinfo=~PF,
+        fillcolor=~Pos,
+        box = list(visible = T),
+        meanline = list(visible = T)) %>% 
+      layout(
+        xaxis = list(title = "Position"),
+        yaxis = list(title = "PF",zeroline = F)
+      )
+    
   });
   
+  #Plotly Plot
+  
   output$dplot <- renderPlotly({
+    varname2 <- input$category3
+    symname2 <- rlang::sym(varname2)
+    quoname2 <- enquo(symname2)
     key= list_player2017
     p <- ggplot(stats2017, 
-      aes(x = PTS, y = `TS%` , colour = Tm, key = key)) + 
-      geom_point(width=0.3, alpha=0.5)+
-      ylab("Shooting Efficiency")+
+                aes(x = PTS, y = !!quoname2 , colour = Tm, key = key)) + 
+      geom_point(alpha=0.5)+
+      ylab(input$category3)+
       xlab("Total Points")
     ggplotly(p) %>% layout(dragmode = "select")
+  });
+  
+  url <- a("Kobe Bryant example", href="https://www.basketball-reference.com/players/b/bryanko01.html")
+  output$tab <- renderUI({
+    tagList("URL link:", url)
   })
   
 }
